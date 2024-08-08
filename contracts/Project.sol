@@ -6,16 +6,23 @@ pragma solidity ^0.8.24;
 
 contract Project {
 
+enum ProjectState { Ongoing, Successful, Failed }
+
+ProjectState public state;
 string public campaignName;
 address public creator;
 string public description;
 uint256 public goalAmount;
 uint256 public deadline;
 uint256 public currentAmount;
-enum ProjectState { Ongoing, Successful, Failed }
-ProjectState public state;
-struct Donation { address donor; uint256 amount; }
-Donation[] public donations;
+
+
+struct Donation { 
+    bool refunded ; 
+    uint256 amount; 
+}
+
+mapping(address => Donation) public donations;
 
 
 event DonationReceived(address indexed donor, uint256 amount);
@@ -42,11 +49,10 @@ event FundsRefunded(address indexed donor, uint256 amount);
     function donate() external payable {
 
         currentAmount += msg.value;
-        donations.push(Donation({
-            donor: msg.sender,
-            amount: msg.value}));
+        donations[msg.sender].amount += msg.value;
+        donations[msg.sender].refunded = false;
 
-        emit DonationReceived(msg.sender, msg.value);
+        emit DonationReceived(address(msg.sender), msg.value);
 
     }
 
@@ -57,23 +63,21 @@ event FundsRefunded(address indexed donor, uint256 amount);
         address payable recipient = payable(creator);
         creator.transfer(currentAmount);
 
-        emit FundsWithdrawn(creator, currentAmount);
+        emit FundsWithdrawn(address(creator), currentAmount);
     }
 
-    function refund() external onlyAfterDeadline{
+   function refund() public onlyAfterDeadline {
+        require(state == ProjectState.Failed, "Cannot refund unless project failed");
 
-        required(state == ProjectState.Failed, "can't refund");
+        Donation storage donorDonation = donations[msg.sender];
+        require(donorDonation.amount > 0, "No donations found for the sender");
+        require(!donorDonation.refunded, "Donation already refunded");
 
-        for(uint i = 0; i < donations.length; i++){
+        uint256 refundAmount = donorDonation.amount;
+        donorDonation.amount = 0;
+        donorDonation.refunded = true;
 
-            if(donations[i].donor = msg.sender){
-
-                donor.transfer(donations[i].amount);
-
-                return;
-            }
-        }
-
+        payable(msg.sender).transfer(refundAmount);
     }
 
 
@@ -87,6 +91,8 @@ event FundsRefunded(address indexed donor, uint256 amount);
 
             state = ProjectState.Failed;
         }
+
+        emit ProjectStateChanged(state);
     }
 
 
