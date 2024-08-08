@@ -1,27 +1,32 @@
-pragma solidity ^0.8.24;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./Project.sol";
 
-contract CrowdfundingPlatform {
-
+contract CrowdfundingPlatform is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     address[] public projects;
+
     event ProjectCreated(address projectAddress, address creator, string description, uint256 goalAmount, uint256 deadline);
 
-    function initialize() public initializer;
-
-    function createProject(address public _creator, string _campaignName, uint256 _goalAmount, uint256 _deadline, string _description) public{
-
-        Project newProject = new Project();
-        projects.push(address(newProject));
-        newProject.initialize( _creator, _campaignName, _goalAmount, _deadline, _description);
-
-        emit ProjectCreated(address(newProject), _creator, _description, _goalAmount, _deadline);
+    function initialize(address initialOwner) public initializer {
+        __Ownable_init(initialOwner);
+        __UUPSUpgradeable_init();
     }
 
-    function getProjects() public view returns (address[] memory){
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
+    function createProject(string memory _description, string memory _campaignName, uint256 _goalAmount, uint256 _deadline) public {
+        Project newProject = new Project();
+        newProject.initialize(msg.sender, _campaignName, _goalAmount, _deadline, _description);
+        projects.push(address(newProject));
+
+        emit ProjectCreated(address(newProject), msg.sender, _description, _goalAmount, _deadline);
+    }
+
+    function getProjects() public view returns (address[] memory) {
         return projects;
     }
-
-
 }

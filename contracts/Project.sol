@@ -33,7 +33,7 @@ event FundsRefunded(address indexed donor, uint256 amount);
 
 
 
-    function initialize( address public _creator, string _campaignName, uint256 _goalAmount, uint256 _deadline, string _description) public {
+    function initialize( address _creator, string memory _campaignName, uint256 _goalAmount, uint256 _deadline, string memory _description) public {
 
         creator = _creator;
         campaignName = _campaignName;
@@ -58,10 +58,10 @@ event FundsRefunded(address indexed donor, uint256 amount);
 
     function withdrawFunds() external onlyCreator onlyAfterDeadline {
 
-        required(state == ProjectState.Successful);
+        require(state == ProjectState.Successful);
 
         address payable recipient = payable(creator);
-        creator.transfer(currentAmount);
+        recipient.transfer(currentAmount);
 
         emit FundsWithdrawn(address(creator), currentAmount);
     }
